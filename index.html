@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agri-Aqua App</title>
+</head>
+<body>
+  <h1>Agri-Aqua Products</h1>
+  <div id="products"></div>
+  <script type="module">
+    import { Client, AuthService, ApiError, IProduct } from './dist/index.js';
+
+    const api = new Client({
+      baseURL: 'https://xyz.supabase.co/functions/v1',
+      headers: { 'X-Custom-Auth': 'my-key' }
+    });
+
+    const auth = new AuthService({
+      loginUrl: '/auth/login',
+      tokenUrl: '/auth/refresh',
+      client_id: 'app-id',
+      secret_key: 'secret'
+    });
+
+    auth.setupInterceptor(api);
+
+    (async () => {
+      try {
+        await auth.login('username', 'password');
+        const products = await api.get<IProduct[]>('/products');
+        document.getElementById('products').innerHTML = products.map(p => `<p>${p.name}</p>`).join('');
+      } catch (e) {
+        if (e instanceof ApiError) {
+          console.error('API Error:', e.message);
+        } else {
+          console.error('Other error:', e);
+        }
+      }
+    })();
+  </script>
+</body>
+</html>
