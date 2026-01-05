@@ -1,6 +1,6 @@
 import { Client, IRequestOptions, ApiError } from './client';
 import { TokenResponseSchema, RegistrationRequestSchema, RegistrationResponseSchema, TokenResponse as ITokenResponse } from '../schemas/auth';
-export { ITokenResponse };
+export type { ITokenResponse };
 
 /**
  * Configuration for authentication endpoints and credentials.

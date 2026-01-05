@@ -1,10 +1,8 @@
 import { Client } from './client';
 import {
     IFarmProfile,
-    IOrder,
     IProductRecommendation,
-    IUsageAnalytics,
-    IIntegratedProduct
+    IUsageAnalytics
 } from '../models';
 
 /**

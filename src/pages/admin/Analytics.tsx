@@ -1,5 +1,5 @@
 import React from 'react';
-import { AreaChart, IndianRupee, TrendingDown, Percent, FileText, ChevronRight } from 'lucide-react';
+import { TrendingDown, Percent, ChevronRight } from 'lucide-react';
 
 const AdminAnalytics: React.FC = () => {
     return (

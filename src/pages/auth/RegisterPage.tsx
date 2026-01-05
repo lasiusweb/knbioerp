@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { UserPlus, Mail, ShieldCheck, Briefcase, MapPin } from 'lucide-react';
+import { UserPlus, Mail, Briefcase, MapPin } from 'lucide-react';
 
 const RegisterPage: React.FC = () => {
     const navigate = useNavigate();

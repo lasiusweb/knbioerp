@@ -90,12 +90,12 @@ const NavItem = ({ icon, label, active = false, danger = false }: any) => (
         borderRadius: '0.75rem',
         cursor: 'pointer',
         background: active ? 'rgba(0, 210, 255, 0.1)' : 'transparent',
-        color: active ? 'var(--primary)' : (danger ? var(--error) : 'var(--text-main)'),
-transition: 'all 0.2s'
+        color: active ? 'var(--primary)' : (danger ? 'var(--error)' : 'var(--text-main)'),
+        transition: 'all 0.2s'
     }}>
-    { icon }
-    < span style = {{ fontWeight: active ? '600' : '400' }}> { label }</span >
-    </div >
+        {icon}
+        <span style={{ fontWeight: active ? '600' : '400' }}>{label}</span>
+    </div>
 );
 
 const MetricRow = ({ label, value, status }: any) => (
