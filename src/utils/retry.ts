@@ -8,6 +8,7 @@
  */
 export const fetchWithRetry = async (
   input: RequestInfo,
+  init?: RequestInit,
   maxRetries: number = 3
 ): Promise<Response> => {
   const retryDelay = (attempt: number): number => {
@@ -16,7 +17,7 @@ export const fetchWithRetry = async (
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const response = await fetch(input);
+      const response = await fetch(input, init);
 
       // Check for Server Errors (5xx) which might be transient
       if (response.status >= 500 && response.status < 600 && attempt < maxRetries) {

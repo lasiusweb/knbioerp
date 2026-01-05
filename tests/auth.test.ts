@@ -124,7 +124,8 @@ describe('AuthService & Client Integration', () => {
                 ok: false,
                 status: 401,
                 statusText: 'Unauthorized',
-                json: async () => ({ error: 'Token expired' })
+                json: async () => ({ error: 'Token expired' }),
+                text: async () => JSON.stringify({ error: 'Token expired' })
             })
             // Call 2: Refresh Token -> Succeeds
             .mockResolvedValueOnce({
@@ -147,15 +148,16 @@ describe('AuthService & Client Integration', () => {
         await apiClient.get('/protected-data');
 
         // 4. Verify calls
-        expect(mockFetch).toHaveBeenCalledTimes(3);
+        expect(mockFetch).toHaveBeenCalledTimes(4);
 
-        // Check if refresh endpoint was called (Call 2)
-        expect(mockFetch).toHaveBeenNthCalledWith(2,
-            expect.stringContaining(authConfig.tokenUrl)
+        // Check if refresh endpoint was called (Call 3)
+        expect(mockFetch).toHaveBeenNthCalledWith(3,
+            expect.stringContaining(authConfig.tokenUrl),
+            expect.any(Object)
         );
 
-        // Check if final retry used new token (Call 3)
-        const lastCallConfig = mockFetch.mock.calls[2][1]; // 3rd call, 2nd arg (options)
+        // Check if final retry used new token (Call 4)
+        const lastCallConfig = mockFetch.mock.calls[3][1]; // 4th call, 2nd arg (options)
         expect(lastCallConfig.headers['Authorization']).toBe('Bearer new_token');
     });
 
@@ -163,12 +165,12 @@ describe('AuthService & Client Integration', () => {
         // 1. Force a refresh scenario
         mockFetch.mockResolvedValueOnce({
             ok: true,
-            json: async () => ({ access_token: 'bad', refresh_token: 'bad', expires_in: 0 })
+            json: async () => ({ access_token: 'bad', refresh_token: 'bad', expires_in: 0, token_type: 'Bearer' })
         });
         await authService.login('user', 'pass');
 
         // 2. Mock Network Failure for refresh
-        mockFetch.mockRejectedValueOnce(new Error('Network Error'));
+        mockFetch.mockRejectedValue(new Error('Network Error'));
 
         // 3. Execute and expect error
         await expect(apiClient.get('/data')).rejects.toThrow('Network Error');

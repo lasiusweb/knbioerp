@@ -1,30 +1,21 @@
 import { Client, IRequestOptions, ApiError } from './client';
-import { TokenResponseSchema, RegistrationRequestSchema, RegistrationResponseSchema } from '../schemas/auth';
+import { TokenResponseSchema, RegistrationRequestSchema, RegistrationResponseSchema, TokenResponse as ITokenResponse } from '../schemas/auth';
+export { ITokenResponse };
 
 /**
  * Configuration for authentication endpoints and credentials.
  */
 export interface IAuthConfig {
-    /** Endpoint for user registration. */
-    registerUrl: string;
-    /** Endpoint for acquiring new tokens. */
-    loginUrl: string;
-    /** Endpoint for refreshing expired access tokens. */
-    tokenUrl: string;
-    /** API Client ID / App ID. */
-    client_id: string;
-    /** API Client Secret. */
-    client_secret: string;
-}
-
-/**
- * Interface for the standard OAuth2 token response.
- */
-export interface ITokenResponse {
-  access_token: string;
-  refresh_token: string;
-  expires_in: number;
-  token_type: string;
+  /** Endpoint for user registration. */
+  registerUrl: string;
+  /** Endpoint for acquiring new tokens. */
+  loginUrl: string;
+  /** Endpoint for refreshing expired access tokens. */
+  tokenUrl: string;
+  /** API Client ID / App ID. */
+  client_id: string;
+  /** API Client Secret. */
+  client_secret: string;
 }
 
 /**
@@ -39,12 +30,12 @@ export class AuthService {
   // Promise lock to prevent multiple simultaneous refreshes
   private _refreshingPromise: Promise<void> | null = null;
 
-  constructor(private _config: IAuthConfig) {}
+  constructor(private _config: IAuthConfig) { }
 
-    /**
-     * Retrieves the current valid access token.
-     * Throws an error if not authenticated.
-     */
+  /**
+   * Retrieves the current valid access token.
+   * Throws an error if not authenticated.
+   */
   private _getAccessToken(): string {
     if (!this._accessToken) {
       throw new Error('Not authenticated. Please login.');
@@ -59,13 +50,13 @@ export class AuthService {
     return this._accessToken;
   }
 
-    /**
-     * Authenticates the user with username and password.
-     * Stores tokens in memory for subsequent requests.
-     *
-     * @param username - User identifier.
-     * @param password - User secret.
-     */
+  /**
+   * Authenticates the user with username and password.
+   * Stores tokens in memory for subsequent requests.
+   *
+   * @param username - User identifier.
+   * @param password - User secret.
+   */
   public async login(username: string, password: string): Promise<void> {
     const response = await fetch(this._config.loginUrl, {
       method: 'POST',
@@ -88,10 +79,10 @@ export class AuthService {
     this._processTokens(validatedData);
   }
 
-    /**
-     * Manages the OAuth2 refresh flow.
-     * Ensures only one refresh request happens at a time (Race Condition Prevention).
-     */
+  /**
+   * Manages the OAuth2 refresh flow.
+   * Ensures only one refresh request happens at a time (Race Condition Prevention).
+   */
   private async _refresh(): Promise<void> {
     if (this._refreshingPromise) {
       return this._refreshingPromise;
@@ -131,9 +122,9 @@ export class AuthService {
     }
   }
 
-    /**
-     * Internal helper to update state from token response.
-     */
+  /**
+   * Internal helper to update state from token response.
+   */
   private _processTokens(data: ITokenResponse): void {
     this._accessToken = data.access_token;
     this._refreshToken = data.refresh_token;
@@ -143,12 +134,12 @@ export class AuthService {
     console.log('[AuthService] Tokens updated. Expires at', new Date(this._tokenExpiryTime).toISOString());
   }
 
-    /**
-     * Registers a new user account.
-     *
-     * @param userData - User registration data.
-     * @returns Promise<RegistrationResponse> - Registration result.
-     */
+  /**
+   * Registers a new user account.
+   *
+   * @param userData - User registration data.
+   * @returns Promise<RegistrationResponse> - Registration result.
+   */
   public async register(userData: { username: string; email: string; password: string }): Promise<any> {
     // Validate input
     const validatedInput = RegistrationRequestSchema.parse(userData);
@@ -167,9 +158,9 @@ export class AuthService {
     return RegistrationResponseSchema.parse(data);
   }
 
-    /**
-     * Logs out the current user by clearing stored tokens.
-     */
+  /**
+   * Logs out the current user by clearing stored tokens.
+   */
   public logout(): void {
     this._accessToken = null;
     this._refreshToken = null;
@@ -177,17 +168,15 @@ export class AuthService {
     console.log('[AuthService] User logged out. Tokens cleared.');
   }
 
-    /**
-     * Attaches the authentication interceptor to the provided Client instance.
-     * Wraps the Client's internal request method to inject headers and handle 401s.
-     *
-     * @param apiClient - The API Client to intercept.
-     */
+  /**
+   * Attaches the authentication interceptor to the provided Client instance.
+   * Wraps the Client's internal request method to inject headers and handle 401s.
+   *
+   * @param apiClient - The API Client to intercept.
+   */
   public setupInterceptor(apiClient: Client): void {
     // We need to wrap the client's core request logic.
-    // Since the Client class is closed, we wrap its methods.
-
-    const originalRequest = apiClient['request'].bind(apiClient);
+    const originalRequest = (apiClient as any)['request'].bind(apiClient) as <T>(method: string, endpoint: string, options?: IRequestOptions) => Promise<T>;
 
     // Override request (TypeScript hack for private method access)
     (apiClient as any)['request'] = async <T>(
@@ -205,11 +194,10 @@ export class AuthService {
             const token = this._getAccessToken();
             authHeaders['Authorization'] = `Bearer ${token}`;
           } catch (err) {
-            // If not authenticated or expired, proceed without header
+            // If not authenticated or expired, proceed without header on first attempt
             if (attempt === 0) {
-              console.warn('[AuthService] No token available. Proceeding unauthenticated.');
+              console.warn('[AuthService] No valid token available. Attempting request anyway.');
             } else {
-              // If we just refreshed but it still failed, stop
               throw err;
             }
           }
@@ -232,9 +220,14 @@ export class AuthService {
 
             // Only refresh if we haven't tried yet in this loop
             if (attempt === 0) {
-              await this._refresh();
-              // Continue to next loop iteration (retry)
-              continue;
+              try {
+                await this._refresh();
+                // Continue to next loop iteration (retry)
+                continue;
+              } catch (refreshError) {
+                console.error('[AuthService] Token refresh failed.', refreshError);
+                throw refreshError;
+              }
             }
           }
 
@@ -243,362 +236,7 @@ export class AuthService {
         }
       }
 
-      // Should be unreachable, but satisfies type checkers
       throw new Error('Request failed after retries.');
     };
   }
 }
-              // If we just refreshed but it still failed, stop
-              throw err;
-            }
-          }
-
-          // Merge Auth headers with existing options
-          const mergedOptions: IRequestOptions = {
-            ...options,
-            headers: {
-              ...options.headers,
-              ...authHeaders
-            }
-          };
-
-          // Execute original request
-          return await originalRequest<T>(method, endpoint, mergedOptions);
-        } catch (error) {
-          // Check for 401 Unauthorized error
-          if (error instanceof ApiError && error.status === 401) {
-            console.warn(`[AuthService] Attempt ${attempt + 1}: 401 Unauthorized. Refreshing token...`);
-
-            // Only refresh if we haven't tried yet in this loop
-            if (attempt === 0) {
-              await this._refresh();
-              // Continue to next loop iteration (retry)
-              continue;
-            }
-          }
-
-          // If it's a network error or other failure, or 401 refresh failed
-          throw error;
-        }
-      }
-
-      // Should be unreachable, but satisfies type checkers
-      throw new Error('Request failed after retries.');
-    };
-  }
-}
-              // If we just refreshed but it still failed, stop
-              throw err;
-            }
-          }
-
-          // Merge Auth headers with existing options
-          const mergedOptions: IRequestOptions = {
-            ...options,
-            headers: {
-              ...options.headers,
-              ...authHeaders
-            }
-          };
-
-          // Execute original request
-          return await originalRequest<T>(method, endpoint, mergedOptions);
-        } catch (error) {
-          // Check for 401 Unauthorized error
-          if (error instanceof ApiError && error.status === 401) {
-            console.warn(`[AuthService] Attempt ${attempt + 1}: 401 Unauthorized. Refreshing token...`);
-
-            // Only refresh if we haven't tried yet in this loop
-            if (attempt === 0) {
-              await this._refresh();
-              // Continue to next loop iteration (retry)
-              continue;
-            }
-          }
-
-          // If it's a network error or other failure, or 401 refresh failed
-          throw error;
-        }
-      }
-
-      // Should be unreachable, but satisfies type checkers
-      throw new Error('Request failed after retries.');
-    };
-  }
-}
-    };
-  }
-}
-
-
-    };
-  }
-}
-
-
-
-}
-
-
-}
-  }
-}}
-
-    };
-  }
-}}
-  }
-}}
-
-
-      // Should be unreachable, but satisfies type checkers
-      throw new Error('Request failed after retries.');
-    };
-  }
-}
-    };
-  }
-}
-
-
-    };
-  }
-}
-
-
-
-}
-
-
-}
-  }
-}}
-
-    };
-  }
-}}
-  }
-}}
-
-
-
-      // Should be unreachable, but satisfies type checkers
-      throw new Error('Request failed after retries.');
-    };
-  }
-}
-    };
-  }
-}
-
-
-    };
-  }
-}
-
-
-
-}
-
-
-}
-  }
-}}
-
-    };
-  }
-}}
-  }
-}}
-
-
-      // Should be unreachable, but satisfies type checkers
-      throw new Error('Request failed after retries.');
-    };
-  }
-}
-    };
-  }
-}
-
-
-    };
-  }
-}
-
-
-
-}
-
-
-}
-  }
-}}
-
-    };
-  }
-}}
-  }
-}}
-
-
-
-
-              // If we just refreshed but it still failed, stop
-              throw err;
-            }
-          }
-
-          // Merge Auth headers with existing options
-          const mergedOptions: IRequestOptions = {
-            ...options,
-            headers: {
-              ...options.headers,
-              ...authHeaders
-            }
-          };
-
-          // Execute original request
-          return await originalRequest<T>(method, endpoint, mergedOptions);
-        } catch (error) {
-          // Check for 401 Unauthorized error
-          if (error instanceof ApiError && error.status === 401) {
-            console.warn(`[AuthService] Attempt ${attempt + 1}: 401 Unauthorized. Refreshing token...`);
-
-            // Only refresh if we haven't tried yet in this loop
-            if (attempt === 0) {
-              await this._refresh();
-              // Continue to next loop iteration (retry)
-              continue;
-            }
-          }
-
-          // If it's a network error or other failure, or 401 refresh failed
-          throw error;
-        }
-      }
-
-      // Should be unreachable, but satisfies type checkers
-      throw new Error('Request failed after retries.');
-    };
-  }
-}
-    };
-  }
-}
-
-
-    };
-  }
-}
-
-
-
-}
-
-
-}
-  }
-}}
-
-    };
-  }
-}}
-  }
-}}
-
-
-      // Should be unreachable, but satisfies type checkers
-      throw new Error('Request failed after retries.');
-    };
-  }
-}
-    };
-  }
-}
-
-
-    };
-  }
-}
-
-
-
-}
-
-
-}
-  }
-}}
-
-    };
-  }
-}}
-  }
-}}
-
-
-
-      // Should be unreachable, but satisfies type checkers
-      throw new Error('Request failed after retries.');
-    };
-  }
-}
-    };
-  }
-}
-
-
-    };
-  }
-}
-
-
-
-}
-
-
-}
-  }
-}}
-
-    };
-  }
-}}
-  }
-}}
-
-
-      // Should be unreachable, but satisfies type checkers
-      throw new Error('Request failed after retries.');
-    };
-  }
-}
-    };
-  }
-}
-
-
-    };
-  }
-}
-
-
-
-}
-
-
-}
-  }
-}}
-
-    };
-  }
-}}
-  }
-}}
-
-
-
-
-

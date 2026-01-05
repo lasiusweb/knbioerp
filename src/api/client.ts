@@ -15,11 +15,13 @@ export interface IClientConfig {
 /**
  * Standard interface for API Options, extending native RequestInit.
  */
-export interface IRequestOptions extends RequestInit {
+export interface IRequestOptions extends Omit<RequestInit, 'body'> {
     /** Query parameters to append to the URL. */
     params?: Record<string, string | number>;
     /** Overrides the global timeout for this specific request. */
     timeout?: number;
+    /** The request body. Can be an object (will be stringified) or standard BodyInit. */
+    body?: any;
 }
 
 /**
@@ -103,7 +105,7 @@ export class Client {
             // Strategy: Retry safe GET requests, fire-once for Mutations
             if (method === 'GET' || method === 'HEAD') {
                 console.debug(`[Client] Fetching GET ${url.toString()} with retry logic.`);
-                response = await fetchWithRetry(url.toString());
+                response = await fetchWithRetry(url.toString(), requestOptions);
             } else {
                 console.debug(`[Client] Fetching ${method} ${url.toString()} (No Retry)`);
                 response = await fetch(url.toString(), requestOptions);

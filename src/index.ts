@@ -12,6 +12,18 @@ export { AuthService, type IAuthConfig, type ITokenResponse } from './api/auth';
 // Export Order Service and types
 export { OrderService, type IOrderConfig } from './api/orders';
 
+// Export Pricing Service and types
+export { PricingService, type IPricingConfig } from './api/pricing';
+
+// Export Dealer Service and types
+export { DealerService, type IDealerConfig } from './api/dealer';
+
+// Export Farmer Service and types
+export { FarmerService, type IFarmerConfig } from './api/farmer';
+
+// Export Pricing Analytics Service and types
+export { PricingAnalyticsService, type IPricingTrend } from './api/analytics';
+
 // Export data models
 export * from './models';
 
