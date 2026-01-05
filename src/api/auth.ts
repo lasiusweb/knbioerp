@@ -248,6 +248,84 @@ export class AuthService {
     };
   }
 }
+              // If we just refreshed but it still failed, stop
+              throw err;
+            }
+          }
+
+          // Merge Auth headers with existing options
+          const mergedOptions: IRequestOptions = {
+            ...options,
+            headers: {
+              ...options.headers,
+              ...authHeaders
+            }
+          };
+
+          // Execute original request
+          return await originalRequest<T>(method, endpoint, mergedOptions);
+        } catch (error) {
+          // Check for 401 Unauthorized error
+          if (error instanceof ApiError && error.status === 401) {
+            console.warn(`[AuthService] Attempt ${attempt + 1}: 401 Unauthorized. Refreshing token...`);
+
+            // Only refresh if we haven't tried yet in this loop
+            if (attempt === 0) {
+              await this._refresh();
+              // Continue to next loop iteration (retry)
+              continue;
+            }
+          }
+
+          // If it's a network error or other failure, or 401 refresh failed
+          throw error;
+        }
+      }
+
+      // Should be unreachable, but satisfies type checkers
+      throw new Error('Request failed after retries.');
+    };
+  }
+}
+              // If we just refreshed but it still failed, stop
+              throw err;
+            }
+          }
+
+          // Merge Auth headers with existing options
+          const mergedOptions: IRequestOptions = {
+            ...options,
+            headers: {
+              ...options.headers,
+              ...authHeaders
+            }
+          };
+
+          // Execute original request
+          return await originalRequest<T>(method, endpoint, mergedOptions);
+        } catch (error) {
+          // Check for 401 Unauthorized error
+          if (error instanceof ApiError && error.status === 401) {
+            console.warn(`[AuthService] Attempt ${attempt + 1}: 401 Unauthorized. Refreshing token...`);
+
+            // Only refresh if we haven't tried yet in this loop
+            if (attempt === 0) {
+              await this._refresh();
+              // Continue to next loop iteration (retry)
+              continue;
+            }
+          }
+
+          // If it's a network error or other failure, or 401 refresh failed
+          throw error;
+        }
+      }
+
+      // Should be unreachable, but satisfies type checkers
+      throw new Error('Request failed after retries.');
+    };
+  }
+}
     };
   }
 }

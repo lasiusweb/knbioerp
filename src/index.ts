@@ -9,6 +9,9 @@ export { Client, ApiError, type IClientConfig, type IRequestOptions } from './ap
 // Export Authentication Service and types
 export { AuthService, type IAuthConfig, type ITokenResponse } from './api/auth';
 
+// Export Order Service and types
+export { OrderService, type IOrderConfig } from './api/orders';
+
 // Export data models
 export * from './models';
 
@@ -19,4 +22,4 @@ export * from './types/agri-aqua';
 export * from './schemas';
 
 // Export utility functions
-export { fetchWithRetry } from './utils/retry';
+export * from './utils';
